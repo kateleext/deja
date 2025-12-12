@@ -12,7 +12,7 @@ Sessions become chapters, todos become structure. Start fresh freely. The past i
 
 Paste into Claude Code:
 
-> Hey Claude, install the Déjà skill from https://github.com/kateleext/deja
+> Hey Claude, load the Déjà skill from https://github.com/kateleext/deja
 
 ## Installation
 
@@ -24,7 +24,7 @@ gh repo clone kateleext/deja ~/.claude/skills/memory
 
 Then read `~/.claude/skills/memory/ONBOARDING.md` and follow every step.
 
-The skill installs as `memory` - more intuitive for the agent than the brand name.
+The skill loads as `memory` - more intuitive for the agent than the brand name.
 
 ## How It Works
 

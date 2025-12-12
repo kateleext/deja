@@ -1,12 +1,12 @@
 # Onboarding Déjà
 
-The skill is installed. Now walk the user through setup.
+The skill is loaded. Now walk the user through setup.
 
 **Follow every step. Do not skip any.**
 
 Start by explaining the agenda:
 
-> Déjà is installed. Now I'll set it up so it works smoothly:
+> Déjà is loaded. Now I'll set it up so it works smoothly:
 >
 > 1. **Create a shortcut** so I can run `deja` directly
 > 2. **Add permission** so I don't have to ask each time
@@ -75,6 +75,6 @@ If they agree, add `"cleanupPeriodDays": 1000` to their settings file.
 
 Say:
 
-> Déjà is installed. I found [X] sessions in your history. From now on, when you reference past work, I can look it up.
+> Déjà is ready. I found [X] sessions in your history. From now on, when you reference past work, I can look it up.
 
 **Do not list commands. The user never runs them—you do.**
