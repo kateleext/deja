@@ -519,6 +519,14 @@ def read(session_id, chapter=None, turn=None, message=None, start=None, end=None
     if chapter is not None:
         navigation_mode = 'chapter'
         if chapter < 1 or chapter > len(chapter_list):
+            if not chapter_list:
+                # No chapters - suggest turn-based navigation
+                return f"No chapters in this session", {
+                    'error': f'This session has no chapters. Use @N for turn-based navigation (e.g., deja {session_id[:8]}@1)',
+                    'success': False,
+                    'hint': 'turn',
+                    'turns': user_turn_count
+                }
             chapter_titles = [f"{i+1}: {c['title']}" for i, c in enumerate(chapter_list)]
             return f"Chapter {chapter} not found", {
                 'error': f'Chapter {chapter} not found. Available: {chapter_titles}',
