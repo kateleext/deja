@@ -150,7 +150,7 @@ def main():
 
     if not positional:
         # Show recent sessions as JSON
-        recent_options = {k: v for k, v in options.items() if k not in ('full', 'help')}
+        recent_options = {k: v for k, v in options.items() if k not in ('full', 'help', 'recent')}
         summary, data = commands.recent(**recent_options)
         output(summary, data)
         return
