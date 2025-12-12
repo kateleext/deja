@@ -13,13 +13,13 @@ Start by explaining the agenda:
 > 3. **Demonstrate** by showing you real history
 > 4. **Extend retention** so old conversations aren't deleted
 
-## Step 1: Create Shortcut and Add to PATH
+## Step 1: Create Shortcut
 
 Explain:
 
-> I'll make a shortcut (or symlink) so I can run `deja` directly, instead of typing out the full path every time. This will make it cleaner for all future Claudes. I'll also add it to your PATH so the system can find it.
+> I'll make a shortcut (or symlink) so I can run `deja` directly, instead of typing out the full path every time. This keeps things clean for all future Claudes. Sound good?
 
-Do both:
+If they agree, create the shortcut:
 ```bash
 mkdir -p ~/.local/bin
 ln -sf ~/.claude/skills/memory/deja ~/.local/bin/deja
@@ -36,6 +36,14 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Note: The PATH change only takes effect in new terminal sessions.
+
+**If they decline**, add this line to the top of SKILL.md (after the frontmatter):
+
+```
+**Path prefix:** Run as `~/.claude/skills/memory/deja` instead of `deja`.
+```
+
+This tells future Claudes to use the full path.
 
 ## Step 2: Add Permission
 
