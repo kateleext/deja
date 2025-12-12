@@ -8,7 +8,7 @@ import glob as glob_module
 
 from config import CLAUDE_PROJECTS_PATH
 from cache import ensure_cache_fresh, get_cache, parse_timestamp
-from extraction import parse_jsonl_file, extract_text_content, is_local_command_noise
+from extraction import parse_jsonl_file, extract_text_content, is_local_command_noise, clean_local_command
 from stemmer import stem_query
 from notes import load_notes, get_notes_for_session, add_note_to_session
 
@@ -518,8 +518,9 @@ def read(session_id, episode=None, turn=None, message=None, start=None, end=None
 
             if entry.get('type') == 'user' and entry.get('message'):
                 content = extract_text_content(entry['message'].get('content', ''))
-                # Skip local command noise (slash commands, stdout, system caveats)
+                # Skip system caveats, transform local commands to readable format
                 if content and not is_local_command_noise(content):
+                    content = clean_local_command(content)
                     user_turn_count += 1
                     all_messages.append({
                         'role': 'user',

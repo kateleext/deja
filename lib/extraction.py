@@ -92,19 +92,30 @@ def extract_activity_signals(entries: List[dict]) -> Dict[str, List[str]]:
 
 
 def is_local_command_noise(content: str) -> bool:
-    """Check if content is system-generated local command noise."""
+    """Check if content is system-generated noise to skip entirely."""
     if not content:
         return False
-    # Slash command invocations
-    if '<command-name>' in content:
-        return True
-    # Local command stdout (often contains ANSI codes)
-    if '<local-command-stdout>' in content:
-        return True
-    # System disclaimer about local commands
+    # System disclaimer about local commands - skip these
     if content.startswith('Caveat: The messages below were generated'):
         return True
     return False
+
+
+def clean_local_command(content: str) -> str:
+    """Transform local command XML into readable format."""
+    import re
+
+    # <command-name>/context</command-name> → [/context]
+    if '<command-name>' in content:
+        match = re.search(r'<command-name>([^<]+)</command-name>', content)
+        if match:
+            return f"[{match.group(1)}]"
+
+    # <local-command-stdout>...</local-command-stdout> → [command output]
+    if '<local-command-stdout>' in content:
+        return '[command output]'
+
+    return content
 
 
 def extract_user_text(entries: List[dict]) -> str:
@@ -115,6 +126,7 @@ def extract_user_text(entries: List[dict]) -> str:
         if entry.get('type') == 'user' and entry.get('message'):
             content = extract_text_content(entry['message'].get('content', ''))
             if content and not is_local_command_noise(content):
+                content = clean_local_command(content)
                 text_parts.append(content)
 
     return ' '.join(text_parts)
@@ -128,6 +140,7 @@ def extract_full_text(entries: List[dict]) -> str:
         if entry.get('type') == 'user' and entry.get('message'):
             content = extract_text_content(entry['message'].get('content', ''))
             if content and not is_local_command_noise(content):
+                content = clean_local_command(content)
                 text_parts.append(content)
 
         elif entry.get('type') == 'assistant' and entry.get('message'):
