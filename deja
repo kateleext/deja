@@ -51,6 +51,7 @@ Options:
   --project NAME  Filter by project
   --after DATE    Only after date
   --before DATE   Only before date
+  --recent        Sort by recency instead of relevance (for search)
   --full          Full message content (no truncation)
 
 Partial session IDs work. Ambiguous IDs show matching sessions."""
@@ -89,6 +90,7 @@ def parse_args(args):
         'after': None,
         'before': None,
         'full': False,
+        'recent': False,
         'help': False
     }
 
@@ -116,6 +118,9 @@ def parse_args(args):
             i += 2
         elif arg == '--full':
             options['full'] = True
+            i += 1
+        elif arg == '--recent':
+            options['recent'] = True
             i += 1
         else:
             positional.append(arg)

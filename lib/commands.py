@@ -199,13 +199,14 @@ def _find_first_matching_turn(file_path: str, matched_terms: set) -> str:
         return None
 
 
-def search(query, limit=5, skip=0, project=None, after=None, before=None):
+def search(query, limit=5, skip=0, project=None, after=None, before=None, recent=False):
     """
     Search sessions by keyword. Binary scoring per category + multi-term bonus + recency.
 
     Scoring uses constants defined at module level.
     Recency: today +2, this week +1
     Use skip to paginate (e.g., skip=5 to get results 6-10).
+    Use recent=True to sort by recency instead of relevance score.
     """
     ensure_cache_fresh()
     load_notes()
@@ -349,8 +350,11 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
             result['firstMatch'] = first_match
         results.append(result)
 
-    # Sort by score (desc), then recency (desc)
-    results.sort(key=lambda x: (x['score'], x['_ts'] or ''), reverse=True)
+    # Sort by recency only (--recent) or by score then recency
+    if recent:
+        results.sort(key=lambda x: x['_ts'] or '', reverse=True)
+    else:
+        results.sort(key=lambda x: (x['score'], x['_ts'] or ''), reverse=True)
 
     for r in results:
         del r['_ts']
