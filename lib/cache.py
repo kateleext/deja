@@ -48,12 +48,7 @@ def load_cache_from_disk():
 
     try:
         with open(CACHE_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            # Convert stemmed_todos back to sets (JSON stores as lists)
-            for session_id, entry in data.items():
-                if 'stemmed_todos' in entry and isinstance(entry['stemmed_todos'], list):
-                    entry['stemmed_todos'] = set(entry['stemmed_todos'])
-            _conversation_cache = data
+            _conversation_cache = json.load(f)
     except (json.JSONDecodeError, IOError) as e:
         print(f"Warning: Could not load cache from {CACHE_PATH}: {e}", file=__import__('sys').stderr)
         _conversation_cache = {}
@@ -62,18 +57,10 @@ def load_cache_from_disk():
 def save_cache_to_disk():
     """Save cache to disk."""
     try:
-        # Convert sets to lists for JSON serialization
-        serializable = {}
-        for session_id, entry in _conversation_cache.items():
-            entry_copy = entry.copy()
-            if 'stemmed_todos' in entry_copy and isinstance(entry_copy['stemmed_todos'], set):
-                entry_copy['stemmed_todos'] = list(entry_copy['stemmed_todos'])
-            serializable[session_id] = entry_copy
-
         os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
 
         with open(CACHE_PATH, 'w', encoding='utf-8') as f:
-            json.dump(serializable, f)
+            json.dump(_conversation_cache, f)
     except IOError as e:
         print(f"Warning: Could not save cache to {CACHE_PATH}: {e}", file=__import__('sys').stderr)
 
