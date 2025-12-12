@@ -1,0 +1,254 @@
+"""
+Data extraction from Claude Code conversation files.
+"""
+
+import os
+import json
+from typing import List, Dict, Any, Set
+
+from stemmer import stem_text, stem_text_with_counts
+
+
+def parse_jsonl_file(file_path: str) -> List[dict]:
+    """Parse a JSONL file and return raw entries"""
+    entries = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        entries.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+    except Exception as e:
+        print(f"Error reading file {file_path}: {e}", file=__import__('sys').stderr)
+    return entries
+
+
+def extract_text_content(content: Any) -> str:
+    """Extract text content from various message content formats"""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        text_parts = []
+        for item in content:
+            if isinstance(item, str):
+                text_parts.append(item)
+            elif isinstance(item, dict) and item.get("type") == "text":
+                text_parts.append(item.get("text", ""))
+        return " ".join(text_parts)
+
+    return ""
+
+
+def extract_activity_signals(entries: List[dict]) -> Dict[str, List[str]]:
+    """
+    Extract activity signals from tool calls:
+    - Files touched (Read, Write, Edit)
+    - Commands run (Bash)
+    - URLs fetched (WebFetch)
+    """
+    files_touched: Set[str] = set()
+    commands_run: Set[str] = set()
+    urls_fetched: Set[str] = set()
+
+    for entry in entries:
+        if entry.get('type') != 'assistant' or not entry.get('message'):
+            continue
+
+        for content_item in entry['message'].get('content', []):
+            if not isinstance(content_item, dict) or content_item.get('type') != 'tool_use':
+                continue
+
+            tool_name = content_item.get('name', '')
+            tool_input = content_item.get('input', {})
+
+            if tool_name in ['Read', 'Write', 'Edit']:
+                file_path = tool_input.get('file_path', '')
+                if file_path:
+                    files_touched.add(os.path.basename(file_path))
+                    files_touched.add(file_path)
+
+            if tool_name == 'Bash':
+                command = tool_input.get('command', '')
+                if command:
+                    cmd_short = command.split()[0] if command.split() else ''
+                    if cmd_short:
+                        commands_run.add(cmd_short)
+                    commands_run.add(command[:100])
+
+            if tool_name == 'WebFetch':
+                url = tool_input.get('url', '')
+                if url:
+                    urls_fetched.add(url)
+
+    return {
+        'files_touched': list(files_touched),
+        'commands_run': list(commands_run),
+        'urls_fetched': list(urls_fetched)
+    }
+
+
+def extract_user_text(entries: List[dict]) -> str:
+    """Extract text content from user messages only"""
+    text_parts = []
+
+    for entry in entries:
+        if entry.get('type') == 'user' and entry.get('message'):
+            content = extract_text_content(entry['message'].get('content', ''))
+            if content:
+                text_parts.append(content)
+
+    return ' '.join(text_parts)
+
+
+def extract_full_text(entries: List[dict]) -> str:
+    """Extract all text content from a conversation for full-text search"""
+    text_parts = []
+
+    for entry in entries:
+        if entry.get('type') == 'user' and entry.get('message'):
+            content = extract_text_content(entry['message'].get('content', ''))
+            if content:
+                text_parts.append(content)
+
+        elif entry.get('type') == 'assistant' and entry.get('message'):
+            for item in entry['message'].get('content', []):
+                if isinstance(item, dict) and item.get('type') == 'text':
+                    text_parts.append(item.get('text', ''))
+
+    return ' '.join(text_parts)
+
+
+def calculate_chapters(todo_snapshots: List[Dict]) -> List[Dict]:
+    """
+    Calculate chapter breaks based on when todos were completed.
+    Each completed todo marks the end of a phase of work.
+    """
+    if not todo_snapshots:
+        return []
+
+    chapters = []
+    completed_todos = set()
+    prev_message_idx = 0
+
+    for snapshot in todo_snapshots:
+        for todo in snapshot['todos']:
+            todo_content = todo.get('content', '')
+            if (todo.get('status') == 'completed' and
+                todo_content and
+                todo_content not in completed_todos):
+
+                chapters.append({
+                    'title': todo_content,
+                    'message_range': (prev_message_idx, snapshot['message_index']),
+                    'completed_at': snapshot['message_index'],
+                    'message_count': snapshot['message_index'] - prev_message_idx
+                })
+
+                completed_todos.add(todo_content)
+                prev_message_idx = snapshot['message_index']
+
+    return chapters
+
+
+def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
+    """
+    Parse JSONL file and extract structured data:
+    - Todo snapshots and chapters
+    - Activity signals (files, commands, URLs)
+    - Full text for search (stemmed)
+    - Metadata
+    """
+    entries = parse_jsonl_file(jsonl_file)
+
+    todo_snapshots = []
+    message_index = 0
+    session_id = None
+    timestamp = None
+    user_messages = []
+
+    for entry in entries:
+        if 'sessionId' in entry and not session_id:
+            session_id = entry['sessionId']
+
+        if entry.get('type') == 'user' and entry.get('message'):
+            msg_content = extract_text_content(entry['message'].get('content', ''))
+            if msg_content:
+                user_messages.append(msg_content[:200])
+                if not timestamp:
+                    timestamp = entry.get('timestamp')
+
+        if entry.get('type') in ['user', 'assistant']:
+            message_index += 1
+
+        if entry.get('type') == 'assistant' and entry.get('message'):
+            for content_item in entry['message'].get('content', []):
+                if (isinstance(content_item, dict) and
+                    content_item.get('type') == 'tool_use' and
+                    'TodoWrite' in content_item.get('name', '')):
+
+                    todos = content_item.get('input', {}).get('todos', [])
+                    todo_snapshots.append({
+                        'message_index': message_index,
+                        'timestamp': entry.get('timestamp'),
+                        'todos': todos
+                    })
+
+    # Calculate final state and chapters
+    final_todos = {'completed': [], 'in_progress': [], 'pending': []}
+    chapters = []
+
+    if todo_snapshots:
+        for todo in todo_snapshots[-1]['todos']:
+            status = todo.get('status', 'pending')
+            content = todo.get('content', '')
+            if content:
+                final_todos[status].append(content)
+
+        chapters = calculate_chapters(todo_snapshots)
+
+    # Unified work items: final todos + chapter titles (for sessions that cleared todos)
+    chapter_titles = [ch.get('title', '') for ch in chapters if ch.get('title')]
+    work_items = list(set(
+        final_todos['completed'] + final_todos['in_progress'] + final_todos['pending'] + chapter_titles
+    ))
+
+    # User message arc (first + last)
+    user_message_arc = []
+    if len(user_messages) > 0:
+        user_message_arc.append(user_messages[0])
+        if len(user_messages) > 1:
+            user_message_arc.append(user_messages[-1])
+
+    # Extract signals and text
+    activity = extract_activity_signals(entries)
+
+    # Build one searchable index from everything
+    all_searchable_text = ' '.join([
+        extract_full_text(entries),  # user + assistant messages
+        ' '.join(work_items),
+        ' '.join(activity['files_touched']),
+        ' '.join(activity['commands_run']),
+    ])
+    term_counts = stem_text_with_counts(all_searchable_text)
+
+    return {
+        'session_id': session_id or 'unknown',
+        'project': os.path.basename(os.path.dirname(jsonl_file)),
+        'first_message': user_messages[0] if user_messages else 'No message',
+        'user_message_arc': user_message_arc,
+        'user_message_count': len(user_messages),
+        'timestamp': timestamp or '',
+        'todo_snapshots': todo_snapshots,
+        'final_todos': final_todos,
+        'work_items': work_items,  # unified: todos + chapter titles
+        'chapters': chapters,
+        'message_count': message_index,
+        'files_touched': activity['files_touched'],
+        'commands_run': activity['commands_run'],
+        'urls_fetched': activity['urls_fetched'],
+        'term_counts': term_counts,
+    }

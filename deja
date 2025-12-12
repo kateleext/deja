@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""
+Déjà - Your Claude Code history, chaptered by what was accomplished.
+
+Usage:
+  deja                        Quick orientation
+  deja "<query>"              Search for sessions (user messages only)
+  deja <session>              Show chapters for session
+  deja <session>:<chapter>    Read chapter content
+  deja <session>@<turn>       Read around a user turn
+  deja <session>.<index>      Get single message at index (full)
+  deja <session> +note "x"    Add a note to session
+  deja projects               List available projects
+
+Options:
+  --help          Show this help
+  --limit N       Max results (default: 5)
+  --skip N        Skip first N results (for pagination)
+  --project NAME  Filter by project
+  --after DATE    Only after this date (ISO format)
+  --before DATE   Only before this date
+  --full          Show full content (default: truncates long responses)
+"""
+
+import sys
+import os
+import json
+import re
+
+# Add lib to path (resolve symlinks to find real location)
+script_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(script_dir, 'lib'))
+
+import commands
+
+HELP_TEXT = """Déjà - Claude Code conversation memory
+
+Usage:
+  deja                        Recent sessions (tabular)
+  deja "query"                Search sessions
+  deja <session>              Session overview
+  deja <session>:2            Read chapter 2
+  deja <session>@3            Read around turn 3
+  deja <session>.15           Get message 15
+  deja <session> +note "..."  Add a note
+  deja projects               List projects
+
+Options:
+  --limit N       Max results (default: 5)
+  --skip N        Skip first N results (for pagination)
+  --project NAME  Filter by project
+  --after DATE    Only after date
+  --before DATE   Only before date
+  --full          Full message content (no truncation)
+
+Partial session IDs work. Ambiguous IDs show matching sessions."""
+
+
+def check_retention_settings():
+    """Check if user has retention settings configured."""
+    settings_path = os.path.expanduser("~/.claude/settings.json")
+    try:
+        if os.path.exists(settings_path):
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+                if settings.get('cleanupPeriodDays'):
+                    return None  # All good
+        return "\n⚠️  No cleanupPeriodDays in ~/.claude/settings.json. History deletes after 30 days."
+    except:
+        return None
+
+
+def looks_like_session_id(s: str) -> bool:
+    """Check if string looks like a session ID (UUID-like or long hex)"""
+    # Strip off :chapter, @turn, or .message suffix
+    base = re.split(r'[:@.]', s)[0]
+    if len(base) >= 8 and re.match(r'^[a-zA-Z0-9_-]+$', base):
+        if not base.isalpha():
+            return True
+    return False
+
+
+def parse_args(args):
+    """Parse command line arguments"""
+    options = {
+        'limit': 5,
+        'skip': 0,
+        'project': None,
+        'after': None,
+        'before': None,
+        'full': False,
+        'help': False
+    }
+
+    positional = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ('--help', '-h'):
+            options['help'] = True
+            i += 1
+        elif arg == '--limit' and i + 1 < len(args):
+            options['limit'] = int(args[i + 1])
+            i += 2
+        elif arg == '--skip' and i + 1 < len(args):
+            options['skip'] = int(args[i + 1])
+            i += 2
+        elif arg == '--project' and i + 1 < len(args):
+            options['project'] = args[i + 1]
+            i += 2
+        elif arg == '--after' and i + 1 < len(args):
+            options['after'] = args[i + 1]
+            i += 2
+        elif arg == '--before' and i + 1 < len(args):
+            options['before'] = args[i + 1]
+            i += 2
+        elif arg == '--full':
+            options['full'] = True
+            i += 1
+        else:
+            positional.append(arg)
+            i += 1
+
+    return positional, options
+
+
+def output(summary_line, data):
+    """Print summary line followed by JSON data"""
+    print(summary_line)
+    print()
+    print(json.dumps(data, indent=2))
+
+
+def main():
+    args = sys.argv[1:]
+    positional, options = parse_args(args)
+
+    # Handle --help
+    if options['help']:
+        print(HELP_TEXT)
+        warning = check_retention_settings()
+        if warning:
+            print(warning)
+        return
+
+    if not positional:
+        # Show recent sessions as JSON
+        recent_options = {k: v for k, v in options.items() if k not in ('full', 'help')}
+        summary, data = commands.recent(**recent_options)
+        output(summary, data)
+        return
+
+    first = positional[0]
+
+    # Special command: projects
+    if first == 'projects':
+        summary, data = commands.projects()
+        output(summary, data)
+        return
+
+    # Check for +note pattern: <session_id> +note "text"
+    if len(positional) >= 3 and positional[1] == '+note':
+        session_id = positional[0]
+        note_text = ' '.join(positional[2:])
+        summary, data = commands.note(session_id, note_text)
+        output(summary, data)
+        return
+
+    # Check for session:chapter pattern
+    if ':' in first and looks_like_session_id(first):
+        parts = first.split(':')
+        session_id = parts[0]
+        chapter = int(parts[1])
+        summary, data = commands.read(session_id, chapter=chapter, full=options['full'])
+        output(summary, data)
+        return
+
+    # Check for session@turn pattern
+    if '@' in first and looks_like_session_id(first):
+        parts = first.split('@')
+        session_id = parts[0]
+        turn = int(parts[1])
+        summary, data = commands.read(session_id, turn=turn, full=options['full'])
+        output(summary, data)
+        return
+
+    # Check for session.message pattern (single message fetch)
+    if '.' in first and looks_like_session_id(first):
+        parts = first.split('.')
+        session_id = parts[0]
+        message_index = int(parts[1])
+        summary, data = commands.read(session_id, message=message_index)
+        output(summary, data)
+        return
+
+    # Check if it's a session ID
+    if looks_like_session_id(first):
+        summary, data = commands.chapters(first)
+        output(summary, data)
+        return
+
+    # Otherwise it's a search query
+    query = ' '.join(positional)
+    search_options = {k: v for k, v in options.items() if k not in ('full', 'help')}
+    summary, data = commands.search(query, **search_options)
+    output(summary, data)
+
+
+if __name__ == "__main__":
+    main()
