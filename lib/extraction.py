@@ -3,6 +3,7 @@ Data extraction from Claude Code conversation files.
 """
 
 import os
+import sys
 import json
 from typing import List, Dict, Any, Set
 
@@ -22,7 +23,7 @@ def parse_jsonl_file(file_path: str) -> List[dict]:
                     except json.JSONDecodeError:
                         continue
     except Exception as e:
-        print(f"Error reading file {file_path}: {e}", file=__import__('sys').stderr)
+        print(f"Error reading file {file_path}: {e}", file=sys.stderr)
     return entries
 
 
