@@ -159,7 +159,7 @@ def _recency_boost(timestamp):
         elif age < timedelta(days=7):
             return 1
         return 0
-    except:
+    except (ValueError, AttributeError, TypeError):
         return 0
 
 
