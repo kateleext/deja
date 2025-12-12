@@ -8,13 +8,14 @@ You just cloned the skill. Now walk the user through setup.
 
 Explain:
 
-> I'll create a symlink so I can run `deja` instead of the full path `~/.claude/skills/memory/deja`. This makes the command accessible from anywhere and keeps the output cleaner when you see me using it. Want me to set this up?
+> I'll create a symlink so I can run `deja` directly. This makes the command accessible from anywhere. It goes in `/usr/local/bin` which is already in your PATH. Want me to set this up?
 
 If yes:
 ```bash
-mkdir -p ~/.local/bin
-ln -sf ~/.claude/skills/memory/deja ~/.local/bin/deja
+sudo ln -sf ~/.claude/skills/memory/deja /usr/local/bin/deja
 ```
+
+Note: This requires sudo because `/usr/local/bin` is system-wide. If user prefers no sudo, use `~/.local/bin` but they'll need to add it to PATH.
 
 ## Step 2: Add Permission
 

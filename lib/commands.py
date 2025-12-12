@@ -39,8 +39,8 @@ def resolve_session_id(partial_id: str, cache: dict) -> tuple:
         return None, f'Session "{partial_id}" not found.'
 
 
-def recent(limit=10, project=None, after=None, before=None):
-    """List recent sessions - JSON format"""
+def recent(limit=5, skip=0, project=None, after=None, before=None):
+    """List recent sessions - JSON format. Use skip for pagination."""
     ensure_cache_fresh()
     load_notes()
 
@@ -108,10 +108,13 @@ def recent(limit=10, project=None, after=None, before=None):
     for c in conversations:
         del c['_ts']
 
-    sessions = conversations[:limit]
+    sessions = conversations[skip:skip + limit]
 
     # Build helpful summary line
-    summary_line = f"{total_sessions} conversations across {len(projects)} projects. Showing {len(sessions)} most recent. deja --help for commands."
+    if skip > 0:
+        summary_line = f"{total_sessions} conversations across {len(projects)} projects. Showing {skip+1}-{skip+len(sessions)}."
+    else:
+        summary_line = f"{total_sessions} conversations across {len(projects)} projects. Showing {len(sessions)} most recent."
 
     return summary_line, {'sessions': sessions}
 
