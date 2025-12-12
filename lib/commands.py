@@ -13,6 +13,18 @@ from stemmer import stem_query
 from notes import load_notes, get_notes_for_session, add_note_to_session
 
 
+# Search scoring weights
+SCORE_WORK_ITEMS = 3  # Todos and episode titles
+SCORE_NOTES = 3
+SCORE_FILES = 2
+SCORE_COMMANDS = 1
+SCORE_TEXT = 1
+SCORE_MULTI_TERM_BONUS = 2  # Per additional term matched
+
+# Message display
+TRUNCATE_LENGTH = 500  # Characters to show in truncated assistant messages
+
+
 def _omit_empty(d: dict) -> dict:
     """Remove keys with empty values ([], {}, '', None) from dict."""
     return {k: v for k, v in d.items() if v not in ([], {}, '', None, 0) and v is not False or k == 'success'}
@@ -189,8 +201,7 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
     """
     Search sessions by keyword. Binary scoring per category + multi-term bonus + recency.
 
-    Score: todos +3, notes +3, files +2, commands +1, text +1
-    Multi-term bonus: +2 per additional term matched (rewards broader coverage)
+    Scoring uses constants defined at module level.
     Recency: today +2, this week +1
     Use skip to paginate (e.g., skip=5 to get results 6-10).
     """
@@ -219,7 +230,7 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
         match_source = []
         matched_terms = set()  # Track which query terms were found across all categories
 
-        # Work items: +3 (binary) - unified todos + episode titles
+        # Work items (binary) - unified todos + episode titles
         work_items = data.get('work_items', [])
         work_items_lower = ' '.join(work_items).lower()
         work_matched = False
@@ -228,10 +239,10 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
                 matched_terms.add(t)
                 work_matched = True
         if work_matched:
-            score += 3
+            score += SCORE_WORK_ITEMS
             match_source.append('todos')
 
-        # Notes: +3 (binary)
+        # Notes (binary)
         notes = get_notes_for_session(session_id)
         notes_lower = ' '.join(notes).lower()
         notes_matched = False
@@ -240,10 +251,10 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
                 matched_terms.add(t)
                 notes_matched = True
         if notes_matched:
-            score += 3
+            score += SCORE_NOTES
             match_source.append('notes')
 
-        # Files: +2 (binary)
+        # Files (binary)
         files_lower = ' '.join(data.get('files_touched', [])).lower()
         files_matched = False
         for t in query_terms:
@@ -251,10 +262,10 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
                 matched_terms.add(t)
                 files_matched = True
         if files_matched:
-            score += 2
+            score += SCORE_FILES
             match_source.append('files')
 
-        # Commands: +1 (binary)
+        # Commands (binary)
         commands_lower = ' '.join(data.get('commands_run', [])).lower()
         commands_matched = False
         for t in query_terms:
@@ -262,10 +273,10 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
                 matched_terms.add(t)
                 commands_matched = True
         if commands_matched:
-            score += 1
+            score += SCORE_COMMANDS
             match_source.append('commands')
 
-        # Text: +1 (binary) - searches full index including assistant responses
+        # Text (binary) - searches full index including assistant responses
         term_counts = data.get('term_counts', data.get('user_term_counts', {}))
         text_matched = False
         for stem in query_stems:
@@ -276,16 +287,15 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
                     if stem in stem_query(t):
                         matched_terms.add(t)
         if text_matched:
-            score += 1
+            score += SCORE_TEXT
             match_source.append('text')
 
         if score == 0:
             continue
 
-        # Multi-term bonus: +2 for each term beyond the first
-        # This rewards sessions matching multiple query terms over single-term matches
+        # Multi-term bonus: rewards sessions matching multiple query terms
         if len(matched_terms) > 1:
-            score += (len(matched_terms) - 1) * 2
+            score += (len(matched_terms) - 1) * SCORE_MULTI_TERM_BONUS
 
         # Recency boost: today +2, this week +1
         score += _recency_boost(data.get('timestamp'))
@@ -569,7 +579,6 @@ def read(session_id, episode=None, turn=None, message=None, start=None, end=None
         }
 
     # Truncate assistant messages unless full=True
-    TRUNCATE_LENGTH = 500
     messages = []
     for m in all_messages:
         if m['role'] == 'assistant' and not full and len(m['content']) > TRUNCATE_LENGTH:
