@@ -6,6 +6,7 @@ On each operation, we check freshness by file mtime and re-parse as needed.
 """
 
 import os
+import sys
 import json
 import glob as glob_module
 from typing import Dict, Any, Optional
@@ -50,7 +51,7 @@ def load_cache_from_disk():
         with open(CACHE_PATH, 'r', encoding='utf-8') as f:
             _conversation_cache = json.load(f)
     except (json.JSONDecodeError, IOError) as e:
-        print(f"Warning: Could not load cache from {CACHE_PATH}: {e}", file=__import__('sys').stderr)
+        print(f"Warning: Could not load cache from {CACHE_PATH}: {e}", file=sys.stderr)
         _conversation_cache = {}
 
 
@@ -62,7 +63,7 @@ def save_cache_to_disk():
         with open(CACHE_PATH, 'w', encoding='utf-8') as f:
             json.dump(_conversation_cache, f)
     except IOError as e:
-        print(f"Warning: Could not save cache to {CACHE_PATH}: {e}", file=__import__('sys').stderr)
+        print(f"Warning: Could not save cache to {CACHE_PATH}: {e}", file=sys.stderr)
 
 
 def get_cache() -> Dict[str, Dict[str, Any]]:
@@ -102,7 +103,7 @@ def index_files():
                 cache_modified = True
 
         except Exception as e:
-            print(f"Error processing {file_path}: {e}", file=__import__('sys').stderr)
+            print(f"Error processing {file_path}: {e}", file=sys.stderr)
             continue
 
     if cache_modified:
