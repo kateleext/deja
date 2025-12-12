@@ -102,6 +102,8 @@ def index_files():
                 _conversation_cache[session_id] = data
                 cache_modified = True
 
+        # Broad exception catch necessary: extraction can fail in many ways
+        # (corrupt JSONL, permission errors, encoding issues, etc.)
         except Exception as e:
             print(f"Error processing {file_path}: {e}", file=sys.stderr)
             continue
@@ -128,5 +130,5 @@ def parse_timestamp(ts: str) -> Optional[datetime]:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt
-    except:
+    except (ValueError, AttributeError):
         return None
