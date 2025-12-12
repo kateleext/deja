@@ -67,17 +67,16 @@ Share something real you found:
 
 ## Step 4: Recommend Retention
 
-Claude Code deletes sessions older than 30 days by default. For Déjà to be useful long-term:
+Claude Code deletes sessions older than 30 days by default. Use **AskUserQuestion** to let them choose:
 
-> **Important**: By default, Claude Code deletes conversation history older than 30 days. I recommend adding this to your `~/.claude/settings.json`:
->
-> ```json
-> "cleanupPeriodDays": 1000
-> ```
->
-> This keeps about 3 years of history. Want me to add it now?
+> By default, Claude Code deletes conversation history older than 30 days. How long do you want to keep history?
 
-If they agree, add `"cleanupPeriodDays": 1000` to their settings file.
+Options:
+- **1000 days** (~3 years, recommended for long-term memory)
+- **365 days** (1 year)
+- **Keep 30 days** (only recent stuff)
+
+If they choose 365 or 1000, add `"cleanupPeriodDays": <value>` to their `~/.claude/settings.json`.
 
 ## Step 5: Finish
 
