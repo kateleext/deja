@@ -3,6 +3,7 @@ Notes storage - breadcrumbs left on sessions for future searches.
 """
 
 import os
+import sys
 import json
 from typing import Dict, List
 
@@ -24,7 +25,7 @@ def load_notes():
             with open(NOTES_PATH, 'r') as f:
                 _notes_cache = json.load(f)
     except Exception as e:
-        print(f"Error loading notes: {e}", file=__import__('sys').stderr)
+        print(f"Error loading notes: {e}", file=sys.stderr)
         _notes_cache = {}
     _notes_loaded = True
 
@@ -36,7 +37,7 @@ def save_notes():
         with open(NOTES_PATH, 'w') as f:
             json.dump(_notes_cache, f, indent=2)
     except Exception as e:
-        print(f"Error saving notes: {e}", file=__import__('sys').stderr)
+        print(f"Error saving notes: {e}", file=sys.stderr)
 
 
 def get_notes_for_session(session_id: str) -> List[str]:
