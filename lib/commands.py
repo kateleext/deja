@@ -193,7 +193,7 @@ def _find_first_matching_turn(file_path: str, matched_terms: set) -> str:
                             snippet = content[:50] + '...' if len(content) > 50 else content
                             return f"@{user_turn} {snippet}"
         return None
-    except:
+    except (ValueError, AttributeError, TypeError):
         return None
 
 
