@@ -13,6 +13,11 @@ from stemmer import stem_query
 from notes import load_notes, get_notes_for_session, add_note_to_session
 
 
+def _omit_empty(d: dict) -> dict:
+    """Remove keys with empty values ([], {}, '', None) from dict."""
+    return {k: v for k, v in d.items() if v not in ([], {}, '', None, 0) and v is not False or k == 'success'}
+
+
 def resolve_session_id(partial_id: str, cache: dict) -> tuple:
     """
     Resolve a partial session ID to a full ID.
@@ -88,20 +93,28 @@ def recent(limit=5, skip=0, project=None, after=None, before=None):
 
         work_done = data.get('files_touched', [])[:5] + data.get('commands_run', [])[:3]
 
-        conversations.append({
+        session_data = {
             'sessionId': session_id,
             'project': _short_project(data.get('project', '')),
             'when': _short_timestamp(data.get('timestamp', '')),
             '_ts': data.get('timestamp', ''),
             'summary': summary,
-            'completed': completed,
-            'inProgress': in_progress,
-            'pending': pending,
             'turns': data.get('user_message_count', 0),
-            'hasChapters': len(data.get('chapters', [])) > 0,
-            'workDone': work_done[:8],
-            'hasNotes': len(notes) > 0
-        })
+        }
+        # Only include if non-empty
+        if completed:
+            session_data['completed'] = completed
+        if in_progress:
+            session_data['inProgress'] = in_progress
+        if pending:
+            session_data['pending'] = pending
+        if len(data.get('chapters', [])) > 0:
+            session_data['hasChapters'] = True
+        if work_done:
+            session_data['workDone'] = work_done[:8]
+        if notes:
+            session_data['hasNotes'] = True
+        conversations.append(session_data)
 
     conversations.sort(key=lambda x: x['_ts'] or '', reverse=True)
 
@@ -345,7 +358,7 @@ def chapters(session_id):
     # Combine files and commands into workDone
     work_done = data.get('files_touched', [])[:10] + data.get('commands_run', [])[:5]
 
-    return summary_line, {
+    return summary_line, _omit_empty({
         'success': True,
         'sessionId': session_id,
         'project': _short_project(data.get('project', '')),
@@ -357,7 +370,7 @@ def chapters(session_id):
         'notes': notes,
         'workDone': work_done[:15],
         'turns': data.get('user_message_count', 0)
-    }
+    })
 
 
 def _get_tool_detail(tool_name: str, tool_input: dict) -> str:
