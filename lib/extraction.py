@@ -91,6 +91,22 @@ def extract_activity_signals(entries: List[dict]) -> Dict[str, List[str]]:
     }
 
 
+def is_local_command_noise(content: str) -> bool:
+    """Check if content is system-generated local command noise."""
+    if not content:
+        return False
+    # Slash command invocations
+    if '<command-name>' in content:
+        return True
+    # Local command stdout (often contains ANSI codes)
+    if '<local-command-stdout>' in content:
+        return True
+    # System disclaimer about local commands
+    if content.startswith('Caveat: The messages below were generated'):
+        return True
+    return False
+
+
 def extract_user_text(entries: List[dict]) -> str:
     """Extract text content from user messages only"""
     text_parts = []
@@ -98,7 +114,7 @@ def extract_user_text(entries: List[dict]) -> str:
     for entry in entries:
         if entry.get('type') == 'user' and entry.get('message'):
             content = extract_text_content(entry['message'].get('content', ''))
-            if content:
+            if content and not is_local_command_noise(content):
                 text_parts.append(content)
 
     return ' '.join(text_parts)
@@ -111,7 +127,7 @@ def extract_full_text(entries: List[dict]) -> str:
     for entry in entries:
         if entry.get('type') == 'user' and entry.get('message'):
             content = extract_text_content(entry['message'].get('content', ''))
-            if content:
+            if content and not is_local_command_noise(content):
                 text_parts.append(content)
 
         elif entry.get('type') == 'assistant' and entry.get('message'):
