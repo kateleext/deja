@@ -15,7 +15,7 @@ Start by explaining the agenda:
 
 ## Step 1: Create Shortcut
 
-Explain:
+Use the **AskUserQuestion** tool to get confirmation:
 
 > I'll make a shortcut (or symlink) so I can run `deja` directly, instead of typing out the full path every time. This keeps things clean for all future Claudes. Sound good?
 
