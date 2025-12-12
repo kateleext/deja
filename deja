@@ -66,7 +66,7 @@ def check_retention_settings():
                 if settings.get('cleanupPeriodDays'):
                     return None  # All good
         return "\n⚠️  No cleanupPeriodDays in ~/.claude/settings.json. History deletes after 30 days."
-    except:
+    except (json.JSONDecodeError, IOError, KeyError):
         return None
 
 
