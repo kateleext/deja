@@ -722,5 +722,5 @@ def _short_timestamp(ts):
             return f"{diff.days}d ago"
         else:
             return dt.strftime("%b %d")
-    except:
+    except (ValueError, AttributeError, TypeError):
         return ""
