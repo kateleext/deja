@@ -23,6 +23,8 @@ SCORE_MULTI_TERM_BONUS = 2  # Per additional term matched
 
 # Message display
 TRUNCATE_LENGTH = 500  # Characters to show in truncated assistant messages
+CONTEXT_TURNS = 2  # Number of turns to show before/after target turn
+DEFAULT_MESSAGE_LIMIT = 50  # Default number of messages to show when displaying all
 
 
 def _omit_empty(d: dict) -> dict:
@@ -625,9 +627,8 @@ def read(session_id, episode=None, turn=None, message=None, start=None, end=None
                 'error': f'Turn {turn} out of range. Session has {user_turn_count} turns.',
                 'success': False
             }
-        context_turns = 2
-        target_start_turn = max(1, turn - context_turns)
-        target_end_turn = min(user_turn_count, turn + context_turns)
+        target_start_turn = max(1, turn - CONTEXT_TURNS)
+        target_end_turn = min(user_turn_count, turn + CONTEXT_TURNS)
 
         selected = [msg for msg in messages
                    if target_start_turn <= msg.get('userTurn', 0) <= target_end_turn]
@@ -647,7 +648,7 @@ def read(session_id, episode=None, turn=None, message=None, start=None, end=None
 
     else:
         navigation_mode = 'all'
-        actual_end = min(50, total_messages)
+        actual_end = min(DEFAULT_MESSAGE_LIMIT, total_messages)
 
     actual_start = max(0, actual_start - expand)
     actual_end = min(total_messages, actual_end + expand)
