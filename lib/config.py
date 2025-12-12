@@ -1,5 +1,5 @@
 """
-Déjà - Your Claude Code history, chaptered by what was accomplished.
+Déjà - Episodic Memory for Claude Code.
 """
 
 import os

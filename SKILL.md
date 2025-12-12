@@ -21,7 +21,7 @@ Conversations end. The work continues. This skill surfaces what came before when
 deja                        # What's recent
 deja "query"                # Search
 deja <session>              # See structure
-deja <session>:2            # Read chapter 2
+deja <session>:2            # Read episode 2
 deja <session>@3            # Read around turn 3
 deja <session> +note "..."  # Leave a breadcrumb
 ```
@@ -49,13 +49,13 @@ deja "auth" --skip 5    # More auth results, not first 5 repeated
 - `--project X` when you know where
 - `--after 2024-12-01` when you know when
 
-**Scoring:** todos/chapters > notes > files > commands > text. Recent sessions boosted. If it's not in top 5, different terms will help more than `--skip`.
+**Scoring:** todos/episodes > notes > files > commands > text. Recent sessions boosted. If it's not in top 5, different terms will help more than `--skip`.
 
-Navigate by chapter (`:N`) or turn (`@N`) once you find the session.
+Navigate by episode (`:N`) or turn (`@N`) once you find the session.
 
 ## Patterns
 
-**Recall a decision.** Search the topic, find the deliberation, read the chapters around when it crystallized.
+**Recall a decision.** Search the topic, find the deliberation, read the episodes around when it crystallized.
 
 **Continue work.** Search the feature, check pending todos, read the final exchanges, summarize state before continuing fresh.
 

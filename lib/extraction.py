@@ -122,15 +122,15 @@ def extract_full_text(entries: List[dict]) -> str:
     return ' '.join(text_parts)
 
 
-def calculate_chapters(todo_snapshots: List[Dict]) -> List[Dict]:
+def calculate_episodes(todo_snapshots: List[Dict]) -> List[Dict]:
     """
-    Calculate chapter breaks based on when todos were completed.
+    Calculate episode breaks based on when todos were completed.
     Each completed todo marks the end of a phase of work.
     """
     if not todo_snapshots:
         return []
 
-    chapters = []
+    episodes = []
     completed_todos = set()
     prev_message_idx = 0
 
@@ -141,7 +141,7 @@ def calculate_chapters(todo_snapshots: List[Dict]) -> List[Dict]:
                 todo_content and
                 todo_content not in completed_todos):
 
-                chapters.append({
+                episodes.append({
                     'title': todo_content,
                     'message_range': (prev_message_idx, snapshot['message_index']),
                     'completed_at': snapshot['message_index'],
@@ -151,13 +151,13 @@ def calculate_chapters(todo_snapshots: List[Dict]) -> List[Dict]:
                 completed_todos.add(todo_content)
                 prev_message_idx = snapshot['message_index']
 
-    return chapters
+    return episodes
 
 
 def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
     """
     Parse JSONL file and extract structured data:
-    - Todo snapshots and chapters
+    - Todo snapshots and episodes
     - Activity signals (files, commands, URLs)
     - Full text for search (stemmed)
     - Metadata
@@ -197,9 +197,9 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
                         'todos': todos
                     })
 
-    # Calculate final state and chapters
+    # Calculate final state and episodes
     final_todos = {'completed': [], 'in_progress': [], 'pending': []}
-    chapters = []
+    episodes = []
 
     if todo_snapshots:
         for todo in todo_snapshots[-1]['todos']:
@@ -208,12 +208,12 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
             if content:
                 final_todos[status].append(content)
 
-        chapters = calculate_chapters(todo_snapshots)
+        episodes = calculate_episodes(todo_snapshots)
 
-    # Unified work items: final todos + chapter titles (for sessions that cleared todos)
-    chapter_titles = [ch.get('title', '') for ch in chapters if ch.get('title')]
+    # Unified work items: final todos + episode titles (for sessions that cleared todos)
+    episode_titles = [ep.get('title', '') for ep in episodes if ep.get('title')]
     work_items = list(set(
-        final_todos['completed'] + final_todos['in_progress'] + final_todos['pending'] + chapter_titles
+        final_todos['completed'] + final_todos['in_progress'] + final_todos['pending'] + episode_titles
     ))
 
     # User message arc (first + last)
@@ -244,8 +244,8 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
         'timestamp': timestamp or '',
         'todo_snapshots': todo_snapshots,
         'final_todos': final_todos,
-        'work_items': work_items,  # unified: todos + chapter titles
-        'chapters': chapters,
+        'work_items': work_items,  # unified: todos + episode titles
+        'episodes': episodes,
         'message_count': message_index,
         'files_touched': activity['files_touched'],
         'commands_run': activity['commands_run'],

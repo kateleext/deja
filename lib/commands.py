@@ -108,8 +108,8 @@ def recent(limit=5, skip=0, project=None, after=None, before=None):
             session_data['inProgress'] = in_progress
         if pending:
             session_data['pending'] = pending
-        if len(data.get('chapters', [])) > 0:
-            session_data['hasChapters'] = True
+        if len(data.get('episodes', [])) > 0:
+            session_data['hasEpisodes'] = True
         if work_done:
             session_data['workDone'] = work_done[:8]
         if notes:
@@ -219,7 +219,7 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
         match_source = []
         matched_terms = set()  # Track which query terms were found across all categories
 
-        # Work items: +3 (binary) - unified todos + chapter titles
+        # Work items: +3 (binary) - unified todos + episode titles
         work_items = data.get('work_items', [])
         work_items_lower = ' '.join(work_items).lower()
         work_matched = False
@@ -303,21 +303,21 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
             else:
                 summary = data.get('first_message', '')[:100]
 
-        # Find first match location: chapter (:N) or turn (@X)
+        # Find first match location: episode (:N) or turn (@X)
         first_match = None
-        chapters = data.get('chapters', [])
+        episodes = data.get('episodes', [])
 
-        # First check chapter titles
-        for i, ch in enumerate(chapters):
-            title_lower = ch.get('title', '').lower()
+        # First check episode titles
+        for i, ep in enumerate(episodes):
+            title_lower = ep.get('title', '').lower()
             for term in matched_terms:
                 if term in title_lower:
-                    first_match = f":{i+1} {ch['title']}"
+                    first_match = f":{i+1} {ep['title']}"
                     break
             if first_match:
                 break
 
-        # If no chapter match, find first turn with match
+        # If no episode match, find first turn with match
         if not first_match and text_matched:
             file_path = data.get('file_path')
             if file_path and os.path.exists(file_path):
@@ -358,8 +358,8 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
     }
 
 
-def chapters(session_id):
-    """Show chapters/overview for a session - JSON format"""
+def episodes(session_id):
+    """Show episodes/overview for a session - JSON format"""
     ensure_cache_fresh()
     load_notes()
 
@@ -400,7 +400,7 @@ def chapters(session_id):
 
     data = cache[session_id]
     notes = get_notes_for_session(session_id)
-    chapter_list = data.get('chapters', [])
+    episode_list = data.get('episodes', [])
     pending = data['final_todos'].get('pending', [])
     in_progress = data['final_todos'].get('in_progress', [])
     completed = data['final_todos'].get('completed', [])
@@ -420,7 +420,7 @@ def chapters(session_id):
         'sessionId': session_id,
         'project': _short_project(data.get('project', '')),
         'when': _short_timestamp(data.get('timestamp', '')),
-        'chapters': chapter_list,
+        'episodes': episode_list,
         'completed': completed,
         'inProgress': in_progress,
         'pending': pending,
@@ -453,7 +453,7 @@ def _get_tool_detail(tool_name: str, tool_input: dict) -> str:
     return ''
 
 
-def read(session_id, chapter=None, turn=None, message=None, start=None, end=None, expand=0, full=False):
+def read(session_id, episode=None, turn=None, message=None, start=None, end=None, expand=0, full=False):
     """
     Read messages from a session.
 
@@ -580,32 +580,32 @@ def read(session_id, chapter=None, turn=None, message=None, start=None, end=None
             messages.append(m)
 
     total_messages = len(messages)
-    chapter_list = data.get('chapters', [])
+    episode_list = data.get('episodes', [])
     navigation_mode = None
     actual_start = 0
     actual_end = total_messages
-    chapter_title = None
+    episode_title = None
 
-    if chapter is not None:
-        navigation_mode = 'chapter'
-        if chapter < 1 or chapter > len(chapter_list):
-            if not chapter_list:
-                # No chapters - suggest turn-based navigation
-                return f"No chapters in this session", {
-                    'error': f'This session has no chapters. Use @N for turn-based navigation (e.g., deja {session_id[:8]}@1)',
+    if episode is not None:
+        navigation_mode = 'episode'
+        if episode < 1 or episode > len(episode_list):
+            if not episode_list:
+                # No episodes - suggest turn-based navigation
+                return f"No episodes in this session", {
+                    'error': f'This session has no episodes. Use @N for turn-based navigation (e.g., deja {session_id[:8]}@1)',
                     'success': False,
                     'hint': 'turn',
                     'turns': user_turn_count
                 }
-            chapter_titles = [f"{i+1}: {c['title']}" for i, c in enumerate(chapter_list)]
-            return f"Chapter {chapter} not found", {
-                'error': f'Chapter {chapter} not found. Available: {chapter_titles}',
+            episode_titles = [f"{i+1}: {e['title']}" for i, e in enumerate(episode_list)]
+            return f"Episode {episode} not found", {
+                'error': f'Episode {episode} not found. Available: {episode_titles}',
                 'success': False
             }
-        ch = chapter_list[chapter - 1]
-        chapter_title = ch['title']
-        actual_start = ch['message_range'][0]
-        actual_end = ch['message_range'][1]
+        ep = episode_list[episode - 1]
+        episode_title = ep['title']
+        actual_start = ep['message_range'][0]
+        actual_end = ep['message_range'][1]
 
     elif turn is not None:
         navigation_mode = 'turn'
@@ -644,8 +644,8 @@ def read(session_id, chapter=None, turn=None, message=None, start=None, end=None
     selected_messages = messages[actual_start:actual_end]
 
     # Build summary line
-    if chapter is not None:
-        summary_line = f"Chapter {chapter}: {chapter_title} · {len(selected_messages)} messages"
+    if episode is not None:
+        summary_line = f"Episode {episode}: {episode_title} · {len(selected_messages)} messages"
     else:
         summary_line = f"Messages {actual_start}-{actual_end} of {total_messages}"
 

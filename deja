@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Déjà - Your Claude Code history, chaptered by what was accomplished.
+Déjà - Episodic Memory for Claude Code.
 
 Usage:
   deja                        Quick orientation
   deja "<query>"              Search for sessions (user messages only)
-  deja <session>              Show chapters for session
-  deja <session>:<chapter>    Read chapter content
+  deja <session>              Show episodes for session
+  deja <session>:<episode>    Read episode content
   deja <session>@<turn>       Read around a user turn
   deja <session>.<index>      Get single message at index (full)
   deja <session> +note "x"    Add a note to session
@@ -39,7 +39,7 @@ Usage:
   deja                        Recent sessions (tabular)
   deja "query"                Search sessions
   deja <session>              Session overview
-  deja <session>:2            Read chapter 2
+  deja <session>:2            Read episode 2
   deja <session>@3            Read around turn 3
   deja <session>.15           Get message 15
   deja <session> +note "..."  Add a note
@@ -72,7 +72,7 @@ def check_retention_settings():
 
 def looks_like_session_id(s: str) -> bool:
     """Check if string looks like a session ID (UUID-like or long hex)"""
-    # Strip off :chapter, @turn, or .message suffix
+    # Strip off :episode, @turn, or .message suffix
     base = re.split(r'[:@.]', s)[0]
     if len(base) >= 8 and re.match(r'^[a-zA-Z0-9_-]+$', base):
         if not base.isalpha():
@@ -166,12 +166,12 @@ def main():
         output(summary, data)
         return
 
-    # Check for session:chapter pattern
+    # Check for session:episode pattern
     if ':' in first and looks_like_session_id(first):
         parts = first.split(':')
         session_id = parts[0]
-        chapter = int(parts[1])
-        summary, data = commands.read(session_id, chapter=chapter, full=options['full'])
+        episode = int(parts[1])
+        summary, data = commands.read(session_id, episode=episode, full=options['full'])
         output(summary, data)
         return
 
@@ -195,7 +195,7 @@ def main():
 
     # Check if it's a session ID
     if looks_like_session_id(first):
-        summary, data = commands.chapters(first)
+        summary, data = commands.episodes(first)
         output(summary, data)
         return
 

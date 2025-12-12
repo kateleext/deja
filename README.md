@@ -8,7 +8,7 @@ Your conversation history already exists on disk. Déjà lets Claude access it.
 
 No more broken telephone - agents documenting while dying, passing notes to the next one who does the same. Instead, Claude reaches back and recalls what you actually said when the situation calls for it.
 
-Sessions become chapters, todos become structure. Start fresh freely. The past is there when context demands it.
+Sessions become episodes, todos become structure. Start fresh freely. The past is there when context demands it.
 
 Paste into Claude Code:
 
@@ -28,7 +28,7 @@ The skill loads as `memory` - more intuitive for the agent than the brand name.
 
 ## How It Works
 
-Your todos become chapters. Every time you use TodoWrite and complete tasks, those become navigable structure in your history. The more you use todos, the more your memory organizes itself.
+Your todos become episodes. Every time you use TodoWrite and complete tasks, those become navigable structure in your history. The more you use todos, the more your memory organizes itself.
 
 Search indexes everything: user messages, assistant responses, todos, files touched, commands run. Results rank by signal strength then recency. Signal weighs todos > files > text, boosted by match breadth (finding more of your words beats finding one word repeatedly).
 
@@ -39,8 +39,8 @@ Under the hood, the skill gives Claude a CLI:
 ```
 deja                        # Recent sessions
 deja "query"                # Search sessions
-deja <session>              # Session overview (chapters, todos, work)
-deja <session>:2            # Read chapter 2
+deja <session>              # Session overview (episodes, todos, work)
+deja <session>:2            # Read episode 2
 deja <session>@3            # Read around turn 3
 deja <session>.15           # Get message 15
 deja <session> +note "..."  # Leave a breadcrumb

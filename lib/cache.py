@@ -28,6 +28,9 @@ def is_entry_stale(entry: Dict[str, Any]) -> bool:
     # v2: unified term_counts replaces user_term_counts
     if 'term_counts' not in entry:
         return True
+    # v3: chapters renamed to episodes
+    if 'episodes' not in entry:
+        return True
     return False
 
 
