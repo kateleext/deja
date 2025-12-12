@@ -37,13 +37,13 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Note: The PATH change only takes effect in new terminal sessions.
 
-**If they decline**, add this line to the top of SKILL.md (after the frontmatter):
+**If they decline**, edit `~/.claude/skills/memory/SKILL.md` and add this line right after the frontmatter (after `---`):
 
 ```
 **Path prefix:** Run as `~/.claude/skills/memory/deja` instead of `deja`.
 ```
 
-This tells future Claudes to use the full path.
+This ensures future Claudes know to use the full path.
 
 ## Step 2: Add Permission
 
