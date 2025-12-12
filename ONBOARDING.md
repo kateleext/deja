@@ -1,14 +1,23 @@
 # Onboarding Déjà
 
-You just cloned the skill. Now walk the user through setup.
+The skill is installed. Now walk the user through setup.
 
 **Follow every step. Do not skip any.**
 
-## Step 1: Create Symlink and Add to PATH
+Start by explaining the agenda:
+
+> Déjà is installed. Now I'll set it up so it works smoothly:
+>
+> 1. **Create a shortcut** so I can run `deja` directly
+> 2. **Add permission** so I don't have to ask each time
+> 3. **Demonstrate** by showing you real history
+> 4. **Extend retention** so old conversations aren't deleted
+
+## Step 1: Create Shortcut and Add to PATH
 
 Explain:
 
-> I'll create a symlink so I can run `deja` directly, and add `~/.local/bin` to your PATH. Note: the PATH change only takes effect in new terminal sessions.
+> I'll make a shortcut (or symlink) so I can run `deja` directly, instead of typing out the full path every time. This will make it cleaner for all future Claudes. I'll also add it to your PATH so the system can find it.
 
 Do both:
 ```bash
@@ -25,6 +34,8 @@ For zsh (`~/.zshrc`) or bash (`~/.bashrc`), append:
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+Note: The PATH change only takes effect in new terminal sessions.
 
 ## Step 2: Add Permission
 
