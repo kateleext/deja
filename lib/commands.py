@@ -140,10 +140,11 @@ def _recency_boost(timestamp):
 
 def search(query, limit=5, skip=0, project=None, after=None, before=None):
     """
-    Search sessions by keyword. Binary scoring per category + recency boost.
+    Search sessions by keyword. Binary scoring per category + multi-term bonus + recency.
 
-    Score: todos +3, notes +3, files +2, commands +1, text +1, today +2, this week +1
-    Each category only counts once (binary), then sorted by score desc, recency desc.
+    Score: todos +3, notes +3, files +2, commands +1, text +1
+    Multi-term bonus: +2 per additional term matched (rewards broader coverage)
+    Recency: today +2, this week +1
     Use skip to paginate (e.g., skip=5 to get results 6-10).
     """
     ensure_cache_fresh()
@@ -169,37 +170,75 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
 
         score = 0
         match_source = []
+        matched_terms = set()  # Track which query terms were found across all categories
 
         # Work items: +3 (binary) - unified todos + chapter titles
         work_items = data.get('work_items', [])
-        if any(any(t in item.lower() for t in query_terms) for item in work_items):
+        work_items_lower = ' '.join(work_items).lower()
+        work_matched = False
+        for t in query_terms:
+            if t in work_items_lower:
+                matched_terms.add(t)
+                work_matched = True
+        if work_matched:
             score += 3
             match_source.append('todos')
 
         # Notes: +3 (binary)
         notes = get_notes_for_session(session_id)
-        if any(any(t in note.lower() for t in query_terms) for note in notes):
+        notes_lower = ' '.join(notes).lower()
+        notes_matched = False
+        for t in query_terms:
+            if t in notes_lower:
+                matched_terms.add(t)
+                notes_matched = True
+        if notes_matched:
             score += 3
             match_source.append('notes')
 
         # Files: +2 (binary)
-        if any(any(t in f.lower() for t in query_terms) for f in data.get('files_touched', [])):
+        files_lower = ' '.join(data.get('files_touched', [])).lower()
+        files_matched = False
+        for t in query_terms:
+            if t in files_lower:
+                matched_terms.add(t)
+                files_matched = True
+        if files_matched:
             score += 2
             match_source.append('files')
 
         # Commands: +1 (binary)
-        if any(any(t in cmd.lower() for t in query_terms) for cmd in data.get('commands_run', [])):
+        commands_lower = ' '.join(data.get('commands_run', [])).lower()
+        commands_matched = False
+        for t in query_terms:
+            if t in commands_lower:
+                matched_terms.add(t)
+                commands_matched = True
+        if commands_matched:
             score += 1
             match_source.append('commands')
 
         # Text: +1 (binary) - searches full index including assistant responses
         term_counts = data.get('term_counts', data.get('user_term_counts', {}))
-        if any(stem in term_counts for stem in query_stems):
+        text_matched = False
+        for stem in query_stems:
+            if stem in term_counts:
+                text_matched = True
+                # Find which original term this stem came from
+                for t in query_terms:
+                    if stem in stem_query(t):
+                        matched_terms.add(t)
+        if text_matched:
             score += 1
             match_source.append('text')
 
         if score == 0:
             continue
+
+        # Multi-term bonus: +2 for each term beyond the first
+        # This rewards sessions matching multiple query terms over single-term matches
+        if len(matched_terms) > 1:
+            score += (len(matched_terms) - 1) * 2
 
         # Recency boost: today +2, this week +1
         score += _recency_boost(data.get('timestamp'))

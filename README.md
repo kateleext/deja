@@ -30,7 +30,7 @@ The skill installs as `memory` - more intuitive for the agent than the brand nam
 
 Your todos become chapters. Every time you use TodoWrite and complete tasks, those become navigable structure in your history. The more you use todos, the more your memory organizes itself.
 
-Search indexes everything: user messages, assistant responses, todos, files touched, commands run. Results rank by signal strength (todos > files > text) then recency.
+Search indexes everything: user messages, assistant responses, todos, files touched, commands run. Results rank by signal strength then recency. Signal weighs todos > files > text, boosted by match breadth (finding more of your words beats finding one word repeatedly).
 
 Reading sessions shows both sides of the conversation, but **truncates long assistant responses** by default. Use `--full` for complete content, or fetch a specific message directly.
 
