@@ -151,6 +151,40 @@ def _recency_boost(timestamp):
         return 0
 
 
+def _find_first_matching_turn(file_path: str, matched_terms: set) -> str:
+    """Find the first user turn containing any matched term. Returns @N format."""
+    try:
+        entries = parse_jsonl_file(file_path)
+        user_turn = 0
+        for entry in entries:
+            if entry.get('type') == 'user' and entry.get('message'):
+                content = extract_text_content(entry['message'].get('content', ''))
+                if content:
+                    user_turn += 1
+                    content_lower = content.lower()
+                    for term in matched_terms:
+                        if term in content_lower:
+                            # Truncate content for display
+                            snippet = content[:50] + '...' if len(content) > 50 else content
+                            return f"@{user_turn} {snippet}"
+            elif entry.get('type') == 'assistant' and entry.get('message'):
+                # Also check assistant messages
+                parts = []
+                for item in entry['message'].get('content', []):
+                    if isinstance(item, dict) and item.get('type') == 'text':
+                        parts.append(item.get('text', ''))
+                content = ' '.join(parts)
+                if content:
+                    content_lower = content.lower()
+                    for term in matched_terms:
+                        if term in content_lower:
+                            snippet = content[:50] + '...' if len(content) > 50 else content
+                            return f"@{user_turn} {snippet}"
+        return None
+    except:
+        return None
+
+
 def search(query, limit=5, skip=0, project=None, after=None, before=None):
     """
     Search sessions by keyword. Binary scoring per category + multi-term bonus + recency.
@@ -269,7 +303,27 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
             else:
                 summary = data.get('first_message', '')[:100]
 
-        results.append({
+        # Find first match location: chapter (:N) or turn (@X)
+        first_match = None
+        chapters = data.get('chapters', [])
+
+        # First check chapter titles
+        for i, ch in enumerate(chapters):
+            title_lower = ch.get('title', '').lower()
+            for term in matched_terms:
+                if term in title_lower:
+                    first_match = f":{i+1} {ch['title']}"
+                    break
+            if first_match:
+                break
+
+        # If no chapter match, find first turn with match
+        if not first_match and text_matched:
+            file_path = data.get('file_path')
+            if file_path and os.path.exists(file_path):
+                first_match = _find_first_matching_turn(file_path, matched_terms)
+
+        result = {
             'sessionId': session_id,
             'score': score,
             'matchSource': match_source,
@@ -278,7 +332,10 @@ def search(query, limit=5, skip=0, project=None, after=None, before=None):
             'when': _short_timestamp(data.get('timestamp', '')),
             '_ts': data.get('timestamp', ''),
             'turns': data.get('user_message_count', 0),
-        })
+        }
+        if first_match:
+            result['firstMatch'] = first_match
+        results.append(result)
 
     # Sort by score (desc), then recency (desc)
     results.sort(key=lambda x: (x['score'], x['_ts'] or ''), reverse=True)
