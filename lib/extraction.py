@@ -227,6 +227,16 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
                         'todos': todos
                     })
 
+        # Also check for OpenCode todos in user messages (created via interface)
+        if entry.get('type') == 'user' and entry.get('todos'):
+            todos = entry.get('todos', [])
+            if todos:  # Only add if todos array is not empty
+                todo_snapshots.append({
+                    'message_index': message_index,
+                    'timestamp': entry.get('timestamp'),
+                    'todos': todos
+                })
+
     # Calculate final state and episodes
     final_todos = {'completed': [], 'in_progress': [], 'pending': []}
     episodes = []
