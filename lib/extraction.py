@@ -152,6 +152,43 @@ def extract_full_text(entries: List[dict]) -> str:
     return ' '.join(text_parts)
 
 
+def normalize_task(task: Dict) -> Dict:
+    """
+    Normalize Task tools (TaskCreate/TaskUpdate) to TodoWrite format.
+
+    TodoWrite format:  { content, status, activeForm, priority }
+    Task format:       { subject, description, status, activeForm, owner, metadata }
+
+    Returns unified format with content = subject + truncated description.
+    """
+    # Already in TodoWrite format
+    if 'content' in task:
+        return task
+
+    # Convert from Task format
+    subject = task.get('subject', '')
+    description = task.get('description', '')
+
+    # Combine subject + truncated description for searchability
+    if description:
+        desc_truncated = description[:100] + '...' if len(description) > 100 else description
+        content = f"{subject}: {desc_truncated}"
+    else:
+        content = subject
+
+    return {
+        'content': content,
+        'status': task.get('status', 'pending'),
+        'activeForm': task.get('activeForm', ''),
+        'priority': task.get('priority', ''),
+        'id': task.get('id', ''),
+        # Preserve original fields for richer data
+        'subject': subject,
+        'description': description[:200] if description else '',
+        'owner': task.get('owner', ''),
+    }
+
+
 def calculate_episodes(todo_snapshots: List[Dict]) -> List[Dict]:
     """
     Calculate episode breaks based on when todos were completed.
@@ -216,16 +253,56 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
 
         if entry.get('type') == 'assistant' and entry.get('message'):
             for content_item in entry['message'].get('content', []):
-                if (isinstance(content_item, dict) and
-                    content_item.get('type') == 'tool_use' and
-                    'TodoWrite' in content_item.get('name', '')):
+                if not isinstance(content_item, dict) or content_item.get('type') != 'tool_use':
+                    continue
 
-                    todos = content_item.get('input', {}).get('todos', [])
+                tool_name = content_item.get('name', '')
+                tool_input = content_item.get('input', {})
+
+                # Legacy TodoWrite - replaces entire todo list
+                if tool_name == 'TodoWrite':
+                    todos = tool_input.get('todos', [])
                     todo_snapshots.append({
                         'message_index': message_index,
                         'timestamp': entry.get('timestamp'),
-                        'todos': todos
+                        'todos': [normalize_task(t) for t in todos]
                     })
+
+                # New TaskCreate - adds a single task
+                elif tool_name == 'TaskCreate':
+                    task = normalize_task(tool_input)
+                    # Assign sequential ID if not present
+                    if todo_snapshots:
+                        existing = todo_snapshots[-1]['todos'].copy()
+                        next_id = str(len(existing) + 1)
+                    else:
+                        existing = []
+                        next_id = '1'
+                    if not task.get('id'):
+                        task['id'] = next_id
+                    existing.append(task)
+                    todo_snapshots.append({
+                        'message_index': message_index,
+                        'timestamp': entry.get('timestamp'),
+                        'todos': existing
+                    })
+
+                # New TaskUpdate - modifies task status
+                elif tool_name == 'TaskUpdate':
+                    task_id = tool_input.get('taskId', '')
+                    new_status = tool_input.get('status')
+                    if todo_snapshots and task_id and new_status:
+                        updated = []
+                        for t in todo_snapshots[-1]['todos']:
+                            t_copy = t.copy()
+                            if t_copy.get('id') == task_id:
+                                t_copy['status'] = new_status
+                            updated.append(t_copy)
+                        todo_snapshots.append({
+                            'message_index': message_index,
+                            'timestamp': entry.get('timestamp'),
+                            'todos': updated
+                        })
 
         # Also check for OpenCode todos in user messages (created via interface)
         if entry.get('type') == 'user' and entry.get('todos'):
@@ -234,7 +311,7 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
                 todo_snapshots.append({
                     'message_index': message_index,
                     'timestamp': entry.get('timestamp'),
-                    'todos': todos
+                    'todos': [normalize_task(t) for t in todos]
                 })
 
     # Calculate final state and episodes
@@ -256,6 +333,14 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
         final_todos['completed'] + final_todos['in_progress'] + final_todos['pending'] + episode_titles
     ))
 
+    # Collect task descriptions for search (from new Task format)
+    task_descriptions = []
+    if todo_snapshots:
+        for todo in todo_snapshots[-1]['todos']:
+            desc = todo.get('description', '')
+            if desc:
+                task_descriptions.append(desc)
+
     # User message arc (first + last)
     user_message_arc = []
     if len(user_messages) > 0:
@@ -270,6 +355,7 @@ def extract_conversation_data(jsonl_file: str) -> Dict[str, Any]:
     all_searchable_text = ' '.join([
         extract_full_text(entries),  # user + assistant messages
         ' '.join(work_items),
+        ' '.join(task_descriptions),  # task descriptions for search
         ' '.join(activity['files_touched']),
         ' '.join(activity['commands_run']),
     ])
