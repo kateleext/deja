@@ -1,6 +1,6 @@
 # Déjà
 
-Episodic memory for Claude Code.
+Episodic memory for Claude Code. ([Website](https://takuma.ai/deja))
 
 ## The Idea
 
